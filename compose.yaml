@@ -1,0 +1,90 @@
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.38.0
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/config/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./prometheus/data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:9.1.2
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/data:/var/lib/grafana
+      - ./grafana/config/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/config/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+      - GF_SERVER_DOMAIN=localhost
+      - GF_SERVER_HTTP_PORT=3000
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    user: '472'
+    privileged: true
+    networks:
+      - monitoring
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.44.0
+    container_name: cadvisor
+    restart: unless-stopped
+    expose:
+      - 8080
+    ports:
+      - 8000:8080
+    volumes:
+      - /var/run:/var/run:rw
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+#      - /:/rootfs:ro
+#      - /sys:/sys:ro # doesn't work on MacOS
+#      - /cgroup:/cgroup:ro # doesn't work on MacOS
+#      - /var/lib/docker/:/var/lib/docker:ro # doesn't work on MacOS
+    privileged: true
+    networks:
+      - monitoring
+
+# @see https://github.com/vegasbrianc/prometheus#mac-users
+# The node-exporter does not run the same as Mac and Linux.
+# Node-Exporter is not designed to run on Mac and in fact cannot collect metrics
+# from the Mac OS due to the differences between Mac and Linux OS's.
+# I recommend you comment out the node-exporter section in the docker-compose.yml
+# file and instead just use the cAdvisor.
+
+#  node-exporter:
+#    image: prom/node-exporter:v1.3.1
+#    container_name: node-exporter
+#    restart: unless-stopped
+#    volumes:
+#      - /proc:/host/proc:ro
+#      - /sys:/host/sys:ro
+#      - /:/rootfs:ro
+#    command:
+#      - '--path.procfs=/host/proc'
+#      - '--path.rootfs=/rootfs'
+#      - '--path.sysfs=/host/sys'
+#      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+#    expose:
+#      - 9100
+#    networks:
+#      - monitoring

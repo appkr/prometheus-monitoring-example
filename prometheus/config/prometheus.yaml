@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+# @see https://github.com/vegasbrianc/prometheus#mac-users
+# The node-exporter does not run the same as Mac and Linux.
+# Node-Exporter is not designed to run on Mac and in fact cannot collect metrics
+# from the Mac OS due to the differences between Mac and Linux OS's.
+# I recommend you comment out the node-exporter section in the docker-compose.yml
+# file and instead just use the cAdvisor.
+
+#  - job_name: 'node-exporter'
+#    static_configs:
+#      - targets: ['node-exporter:9100']
+
+#remote_write:
+#  - url: '<Your Prometheus remote_write endpoint>'
+#    basic_auth:
+#      username: ''<Your Grafana Username>'
+#      password: ''<Your Grafana API key>'
